@@ -22,6 +22,8 @@ int main(int argc, char *argv[]) {
   int nflag =0; 
   // unmount flag to unmount existing container
   int uflag =0;
+  // display help
+  int hflag =0;
   // error flag to deal with exclusive options and wrong syntax
   int errflag =0;
   
@@ -32,16 +34,28 @@ int main(int argc, char *argv[]) {
   int c;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "umn:")) != -1) {
+  while ((c = getopt (argc, argv, "humn:")) != -1) {
     switch (c) {
+        case 'h':
+          if(uflag||hflag) 
+            ++errflag;
+          else
+            hflag = 1;
+          break;
+        case 'u':
+          if(uflag||hflag) 
+            ++errflag;
+          else
+            uflag = 1;
+          break;
         case 'm':
-          if(uflag) 
+          if(uflag||hflag) 
             ++errflag;
           else
             mflag = 1;
           break;
         case 'n':
-          if(uflag) 
+          if(uflag||hflag) 
             ++errflag;
           else {
             nflag = 1;
@@ -71,8 +85,15 @@ int main(int argc, char *argv[]) {
     else {
       ++errflag;
       std::cout<<"More than one non-option argument: "<<argv[index]<<"\n";
+      print_usage();
       break;
       }
+    }
+
+  if(errflag||hflag) {
+    std::cout<<"Invalid arguments."<<std::endl;
+    print_usage();
+    exit(1);
     }
   
   // Don't mess around me now, this is just a POC.
@@ -122,8 +143,14 @@ int main(int argc, char *argv[]) {
     }
 
   // Mounting OverlayFS and other necessary virtual file systems
-  std::for_each(mountList.begin(), mountList.end(), mount_helper);
+  kage::MountAction act = kage::m;
+  std::for_each(mountList.begin(), mountList.end(),
+                // This is a lambda trick to pass 2 args to for_each
+                [act](kage::MountDetail md) {
+                  mount_helper(md, act);
+                  });
   
+  // Chroot into overlay root and invoke shell
   childPID = fork();
   if(childPID >= 0) {
     if(childPID == 0) {
@@ -145,6 +172,8 @@ int main(int argc, char *argv[]) {
     }
   else {
     std::cerr<<"Fork failed before chroot..."<<std::endl;
+    std::string cmd = "./cleanup.sh "+mergeDirName;
+    system(cmd.c_str());
     exit(1);
     }
     

@@ -18,6 +18,8 @@ void mkdir_helper(std::string folderName) {
   try {
     // Making directories for mounting
     std::cout<<getuid()<<std::endl;
+
+    // sudo will expose the true uid & gid by env
     const char* env_uid = std::getenv("SUDO_UID");
     const char* env_gid = std::getenv("SUDO_GID");
     uid_t oUid = std::atoi(env_uid);
@@ -41,7 +43,7 @@ void mkdir_helper(std::string folderName) {
     }
   }
 
-void mount_helper(kage::MountDetail _entry) {
+void mount_helper(kage::MountDetail _entry, kage::MountAction _act) {
   try {
     // Mounting directories
     std::string mountId     = std::get<0>(_entry); 
@@ -56,9 +58,26 @@ void mount_helper(kage::MountDetail _entry) {
     // Mount arguments are handled diffrently...
     // For instance, be careful of proc, which mount options are filled
     // in mount flags...
-    if ( mount(mountId.c_str(), mountPoint.c_str(), fsType.c_str(),
-               mOpt, mountOpt.c_str()) ) {
-      throw(std::strerror(errno));
+    switch(_act) {
+      case kage::m:
+        if( mount(mountId.c_str(), mountPoint.c_str(),
+            fsType.c_str(), mOpt, mountOpt.c_str()) ) {
+          std::cerr<<"Error occured when mounting: "<<mountPoint<<std::endl;
+          throw(std::strerror(errno));
+          }
+        break;
+      case kage::u:
+        if( umount2(mountPoint.c_str(), 0) ) {
+          std::cerr<<"Error occured when umounting: "<<mountPoint<<std::endl;
+          throw(std::strerror(errno));
+          }
+        break;
+      case kage::r:
+        throw("Not supporting remount for now ...");
+        break;
+
+      default:
+        throw("Internal error: invalid mount action.");
       }
     //if (0)
     //  throw(std::strerror(errno));

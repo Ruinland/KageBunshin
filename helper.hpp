@@ -17,7 +17,9 @@
 #include <sys/mount.h>
 #include <sys/capability.h>
 
+
 namespace kage {
+  enum MountAction { m, r, u };
   typedef std::vector<std::string> ContainerFolders;
   // (mount id, mount targe, fs type, flags, mount options)
   typedef std::tuple<std::string,
@@ -29,5 +31,5 @@ namespace kage {
   }
 
 void mkdir_helper(std::string); 
-void mount_helper(kage::MountDetail); 
+void mount_helper(kage::MountDetail, kage::MountAction); 
 void print_usage(void);
