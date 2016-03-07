@@ -30,3 +30,4 @@ namespace kage {
 
 void mkdir_helper(std::string); 
 void mount_helper(kage::MountDetail); 
+void print_usage(void);

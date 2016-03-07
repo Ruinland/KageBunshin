@@ -14,9 +14,70 @@ int main(int argc, char *argv[]) {
     std::cout<<"usage: ./kage container_folder_name"<<std::endl;
     exit(1);
     }
+
+  // mount namespace,
+  // no arguments required, just detach from root namespace
+  int mflag =0;
+  // net namespace, read config for now
+  int nflag =0; 
+  // unmount flag to unmount existing container
+  int uflag =0;
+  // error flag to deal with exclusive options and wrong syntax
+  int errflag =0;
+  
+
+  int index;
+  std::string nvalue;
+  std::string dirName;
+  int c;
+
+  opterr = 0;
+  while ((c = getopt (argc, argv, "umn:")) != -1) {
+    switch (c) {
+        case 'm':
+          if(uflag) 
+            ++errflag;
+          else
+            mflag = 1;
+          break;
+        case 'n':
+          if(uflag) 
+            ++errflag;
+          else {
+            nflag = 1;
+            nvalue = std::string(optarg);
+            }
+          break;
+        case '?':
+          if (optopt == 'n')
+            std::cerr<<"Option -"<<optopt<<"requires an argument.\n";
+          else if (isprint (optopt))
+            std::cerr<<"Unknown option `-"<<optopt<<"'.\n";
+          else
+            std::cerr<<"Unknown option character `\\x="<<std::hex<<optopt<<"'.\n";
+          return 1;
+        default:
+          abort ();
+        }
+      }
+
+  int non_opt_count = 0;
+  for (index = optind; index < argc; index++) {
+    if(non_opt_count <= 0 ) {
+      std::cout<<"Container dir name: "<<argv[index]<<"\n";
+      dirName = std::string(argv[index]);
+      ++non_opt_count;
+      }
+    else {
+      ++errflag;
+      std::cout<<"More than one non-option argument: "<<argv[index]<<"\n";
+      break;
+      }
+    }
   
   // Don't mess around me now, this is just a POC.
-  std::string folderName(argv[1]);
+  //std::string folderName(argv[1]);
+  std::string folderName = dirName;
   std::string workDirName(folderName  + "/work");
   std::string upperDirName(folderName + "/upper");
   std::string mergeDirName(folderName + "/new_root");
