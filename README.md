@@ -10,4 +10,4 @@ make
 sudo ./kage YourDesiredName
 ```
 Enjoy.
-Once exited, cleanup script will umount mounted diretories.
+Once exit the session, cleanup script will umount those mounted diretories.
