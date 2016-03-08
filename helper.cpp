@@ -24,10 +24,8 @@ void mkdir_helper(std::string folderName) {
     const char* env_gid = std::getenv("SUDO_GID");
     uid_t oUid = std::atoi(env_uid);
     uid_t oGid = std::atoi(env_gid);
-    std::cout<<oUid<<" "<<oGid<<std::endl;
     setuid(oUid);
     setgid(oGid);
-    std::cout<<getuid()<<std::endl;
 
     std::cout<<"Making dir:"<<folderName.c_str()<<std::endl;
     
@@ -43,6 +41,22 @@ void mkdir_helper(std::string folderName) {
     }
   }
 
+int child_main(void *mergeDirName) {
+  //uid_t oUid = std::atoi(std::getenv("SUDO_UID"));
+  char *uidString = std::getenv("SUDO_UID");
+  //char arg_su[] = "-u "+;
+  chroot((const char*)mergeDirName);
+  char arg_inter[] = "-i";
+  char *argv_list[] = {uidString,NULL};
+  execvp("su", argv_list);
+
+  return 1;
+  } 
+
+void namespace_helper(kage::NamespaceType nsType) {
+
+    } 
+
 void mount_helper(kage::MountDetail _entry, kage::MountAction _act) {
   try {
     // Mounting directories
@@ -51,9 +65,10 @@ void mount_helper(kage::MountDetail _entry, kage::MountAction _act) {
     std::string fsType      = std::get<2>(_entry);
     unsigned long int mOpt  = std::get<3>(_entry);
     std::string mountOpt    = std::get<4>(_entry);
-    std::cout<<mountId<<" ";  
-    std::cout<<mountPoint<<" ";  
-    std::cout<<fsType    <<" "; 
+    std::cout<<"Mounting: ";
+    std::cout<<mountId<<" to ";  
+    std::cout<<mountPoint<<" as";  
+    std::cout<<fsType    <<" with options: "; 
     std::cout<<mountOpt  <<std::endl; 
     // Mount arguments are handled diffrently...
     // For instance, be careful of proc, which mount options are filled
@@ -87,22 +102,3 @@ void mount_helper(kage::MountDetail _entry, kage::MountAction _act) {
     exit(1);
     }
   }
-
-/* Obsoleted code ... remove if go release
-  try {
-    //Making directories for mounting
-    if ( mkdir( folderName.c_str(), DEFAULT_FLAG) )
-      throw(std::strerror(errno));
-    if ( mkdir( workDirName.c_str(), DEFAULT_FLAG) )
-      throw(std::strerror(errno));
-    if ( mkdir( upperDirName.c_str(), DEFAULT_FLAG) )
-      throw(std::strerror(errno));
-    if ( mkdir( mergeDirName.c_str(), DEFAULT_FLAG) )
-      throw(std::strerror(errno));
-    }
-  catch (const std::string& errmsg){
-    std::cerr<<"Failed during creating folder: "<<folderName<<std::endl;
-    std::cerr<<errmsg<<std::endl;
-    exit(1);
-    }
-*/

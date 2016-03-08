@@ -20,6 +20,7 @@
 
 namespace kage {
   enum MountAction { m, r, u };
+  enum NamespaceType { User, Pic, Net, Mount };
   typedef std::vector<std::string> ContainerFolders;
   // (mount id, mount targe, fs type, flags, mount options)
   typedef std::tuple<std::string,
@@ -28,8 +29,12 @@ namespace kage {
                      unsigned long int,
                      std::string> MountDetail;
   typedef std::vector<MountDetail> MountList;
+
+  constexpr int CHILD_STACK_SIZE = 1024*1024;
   }
 
 void mkdir_helper(std::string); 
 void mount_helper(kage::MountDetail, kage::MountAction); 
+void namespace_helper(kage::NamespaceType);
+int child_main(void *);
 void print_usage(void);

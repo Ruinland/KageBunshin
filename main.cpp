@@ -6,6 +6,10 @@
 
 #include "helper.hpp"
 
+// Needed for namespace manipulation
+// #define _GNU_SOURCE //clang complains abt it
+#include <sched.h>
+
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -97,7 +101,6 @@ int main(int argc, char *argv[]) {
     }
   
   // Don't mess around me now, this is just a POC.
-  //std::string folderName(argv[1]);
   std::string folderName = dirName;
   std::string workDirName(folderName  + "/work");
   std::string upperDirName(folderName + "/upper");
@@ -107,14 +110,42 @@ int main(int argc, char *argv[]) {
   kage::MountList mountList = {
       // First one is Overlay Root
       // (mount id, mount targe, fs type, flags, mount options)
-      std::make_tuple(folderName ,mergeDirName, "overlay", (MS_NODEV|MS_MGC_VAL), 
-      "lowerdir=/,upperdir="+upperDirName+",workdir="+workDirName),
-      std::make_tuple("proc", mergeDirName+"/proc","proc",(MS_MGC_VAL|MS_NOSUID|MS_NODEV|MS_NOEXEC),""),
-      std::make_tuple("sys", mergeDirName+"/sys","sysfs", (MS_MGC_VAL|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC), ""),
-      std::make_tuple("udev", mergeDirName+"/dev","devtmpfs", (MS_MGC_VAL|MS_NOSUID), "mode=0755"),
-      std::make_tuple("devpts", mergeDirName+"/dev/pts","devpts", (MS_MGC_VAL|MS_NOSUID|MS_NOEXEC), "mode=0620,gid=5"),
-      std::make_tuple("run", mergeDirName+"/run", "tmpfs" , (MS_MGC_VAL|MS_NOSUID|MS_NODEV), "mode=0755"),
-      std::make_tuple("tmp", mergeDirName+"/tmp","tmpfs", (MS_NOSUID|MS_NODEV|MS_STRICTATIME), "mode=1777")};
+      std::make_tuple(folderName ,
+                      mergeDirName,
+                      "overlay",
+                      (MS_NODEV|MS_MGC_VAL), 
+                      "lowerdir=/,upperdir="+upperDirName+",workdir="+workDirName),
+      std::make_tuple("proc",
+                       mergeDirName+"/proc",
+                       "proc",
+                       (MS_MGC_VAL|MS_NOSUID|MS_NODEV|MS_NOEXEC),
+                       ""),
+      std::make_tuple("sys",
+                      mergeDirName+"/sys",
+                      "sysfs",
+                      (MS_MGC_VAL|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC),
+                      ""),
+      std::make_tuple("udev",
+                      mergeDirName+"/dev",
+                      "devtmpfs",
+                      (MS_MGC_VAL|MS_NOSUID),
+                      "mode=0755"),
+      std::make_tuple("devpts",
+                      mergeDirName+"/dev/pts",
+                      "devpts",
+                      (MS_MGC_VAL|MS_NOSUID|MS_NOEXEC),
+                      "mode=0620,gid=5"),
+      std::make_tuple("run",
+                      mergeDirName+"/run",
+                      "tmpfs",
+                      (MS_MGC_VAL|MS_NOSUID|MS_NODEV),
+                      "mode=0755"),
+      std::make_tuple("tmp",
+                      mergeDirName+"/tmp",
+                      "tmpfs",
+                      (MS_NOSUID|MS_NODEV|MS_STRICTATIME),
+                      "mode=1777")};
+
   std::cout<<"Mount List Size: "<<mountList.size()<<std::endl;
 
   kage::ContainerFolders folderList = {folderName,
@@ -131,6 +162,8 @@ int main(int argc, char *argv[]) {
   if(childPID >= 0) {
     if(childPID == 0) {
         std::for_each(folderList.begin(), folderList.end(), mkdir_helper);
+        // Terminate child process after creating directories !!!
+        exit(0);
         }
     else {
         int status;
@@ -150,16 +183,25 @@ int main(int argc, char *argv[]) {
                   mount_helper(md, act);
                   });
   
-  // Chroot into overlay root and invoke shell
-  childPID = fork();
+
+  // Dealing with namespace flags ;
+  // Rewrite this part with for_each statement later...
+  int cloneFlags = 0;
+  static char childStack[kage::CHILD_STACK_SIZE];
+  if( mflag == 1) {
+    cloneFlags = cloneFlags | CLONE_NEWNS;
+    }
+
+  //namespace_helper();
+  // Clone(fork) a process to chroot into overlay root.
+  // Parent process will wait and clean up if child process exist.
+  childPID = clone(child_main,
+                   childStack + kage::CHILD_STACK_SIZE,
+                   cloneFlags | SIGCHLD,
+                   (void *)mergeDirName.c_str())
+                   ;
   if(childPID >= 0) {
     if(childPID == 0) {
-        chroot(mergeDirName.c_str());
-        char arg_inter[] = "-i";
-        //uid_t oUid = std::atoi(std::getenv("SUDO_UID"));
-        //char arg_su[] = "-u "+;
-        char *argv_list[] = {arg_inter,NULL};
-        execvp("sh", argv_list);
         }
     else {
         int status;
